@@ -1,0 +1,80 @@
+version: '3.0'
+
+services:
+  nginx:
+    build:
+      context: ./docker/nginx
+    volumes:
+      - ./:/project
+    container_name: symf-nginx
+    restart: always
+#    TODO: указать свободный порт
+    ports:
+      - "8099:80"
+    command: nginx -g 'daemon off;'
+
+  php-fpm:
+    build:
+      context: ./docker/php-fpm
+    environment:
+      XDEBUG_CONFIG: "remote_host=172.18.18.1 remote_enable=1 remote_autostart=off  remote_port=9008"
+      PHP_IDE_CONFIG: "serverName=first"
+    volumes:
+      - ./:/project
+    container_name: symf-php-fpm
+    depends_on:
+      - database
+
+  php-cli:
+    build:
+      context: ./docker/php-cli
+    volumes:
+      - ./:/project
+    command: sleep 10000
+    container_name: symf-php-cli
+
+  node-cli:
+    container_name: symf-node-cli
+    build:
+      context: ./docker/node-cli
+    volumes:
+      - ./:/project
+
+  mailer:
+    image: schickling/mailcatcher
+#    TODO: указать свободный порт
+    ports:
+      - "1080:1080"
+
+  rabbitmq3:
+    container_name: "rabbitmq"
+    image: rabbitmq:3.8-management-alpine
+    environment:
+      - RABBITMQ_DEFAULT_USER=myuser
+      - RABBITMQ_DEFAULT_PASS=mypassword
+    ports:
+      # AMQP protocol port
+      - '5672:5672'
+      # HTTP management UI
+      - '15672:15672'
+
+###> doctrine/doctrine-bundle ###
+  database:
+    container_name: symf-db
+    image: mariadb:10.3
+    volumes:
+      - ./data/db/mysql://var/lib/mysql
+    ports:
+      - "3360:3306"
+    restart: always
+    environment:
+      - MYSQL_PASSWORD=osm
+      - MYSQL_USER=osm
+      - MYSQL_DATABASE=osm
+      - MARIADB_ROOT_PASSWORD=root
+    command: [ 'mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci' ]
+
+volumes:
+###> doctrine/doctrine-bundle ###
+  db-data:
+###< doctrine/doctrine-bundle ###
